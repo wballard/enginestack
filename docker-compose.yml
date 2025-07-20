@@ -1,0 +1,51 @@
+name: OpenCRUD Stack
+services:
+  # traefik for the main reverse proxy and https
+  traefik:
+    restart: always
+    image: "traefik:v3.4.1"
+    container_name: "traefik"
+    command:
+      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entryPoints.web.address=:80"
+      - "--entryPoints.websecure.address=:443"
+      - "--certificatesresolvers.api.acme.tlschallenge=true"
+      - "--certificatesresolvers.api.acme.email=wballard@mailframe.net"
+      - "--certificatesresolvers.api.acme.storage=/letsencrypt/api.acme.json"
+      - "--certificatesresolvers.webapi.acme.tlschallenge=true"
+      - "--certificatesresolvers.webapi.acme.email=wballard@mailframe.net"
+      - "--certificatesresolvers.webapi.acme.storage=/letsencrypt/webapi.acme.json"
+      - "--certificatesresolvers.admin.acme.tlschallenge=true"
+      - "--certificatesresolvers.admin.acme.email=wballard@mailframe.net"
+      - "--certificatesresolvers.admin.acme.storage=/letsencrypt/admin.acme.json"
+      - "--accesslog=true"
+      - "--accesslog.format=json"
+      - "--serversTransport.insecureSkipVerify=true"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - /var/data/letsencrypt:/letsencrypt
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  admin:
+    restart: always
+    build:
+      context: git@github.com:wballard/engine-ui.git
+      ssh:
+        - default
+    depends_on:
+      - traefik
+    ports:
+      - "5173"
+    container_name: "admin"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.admin.rule=Host(`admin.mailframe.net`)"
+      - "traefik.http.routers.admin.entrypoints=websecure"
+      - "traefik.http.routers.admin.tls.certresolver=admin"
+      - "traefik.http.services.admin.loadbalancer.server.port=5173" # Changed from 80
