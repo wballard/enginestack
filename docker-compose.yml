@@ -1,10 +1,17 @@
-name: OpenCRUD Stack
+name: Engine Stack
+
+networks:
+  engine:
+    driver: bridge
+
 services:
   # traefik for the main reverse proxy and https
   traefik:
     restart: always
     image: "traefik:v3.4.1"
     container_name: "traefik"
+    networks:
+      - engine # Add this
     command:
       - "--log.level=DEBUG"
       - "--api.insecure=true"
@@ -43,9 +50,12 @@ services:
     ports:
       - "5173"
     container_name: "admin"
+    networks:
+      - engine # Add this
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=engine" # Add this line
       - "traefik.http.routers.admin.rule=Host(`admin.mailframe.net`)"
       - "traefik.http.routers.admin.entrypoints=websecure"
       - "traefik.http.routers.admin.tls.certresolver=admin"
-      - "traefik.http.services.admin.loadbalancer.server.port=5173" # Changed from 80
+      - "traefik.http.services.admin.loadbalancer.server.port=5173"
